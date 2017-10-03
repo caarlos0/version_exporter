@@ -20,18 +20,10 @@ var (
 	version = "master"
 	token   = os.Getenv("GITHUB_TOKEN")
 
-	majorGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "latest_version_major",
-		Help: "latest major version of a given repository",
-	})
-	minorGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "latest_version_minor",
-		Help: "latest minor version of a given repository",
-	})
-	patchGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "latest_version_patch",
-		Help: "latest patch version of a given repository",
-	})
+	updateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "up_to_date",
+		Help: "will be 0 if there is a new version available",
+	}, []string{"current", "latest"})
 	probeDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "probe_duration_seconds",
 		Help: "Returns how long the probe took to complete in seconds",
@@ -55,7 +47,7 @@ func main() {
 			<body>
 				<h1>Version Exporter</h1>
 				<p><a href="/metrics">Metrics</a></p>
-				<p><a href="/probe?target=prometheus/prometheus">probe prometheus/prometheus</a></p>
+				<p><a href="/probe?repo=prometheus/prometheus&tag=v1.7.2">probe prometheus/prometheus</a></p>
 			</body>
 			</html>
 			`,
@@ -77,21 +69,29 @@ type Release struct {
 
 func probeHandler(w http.ResponseWriter, r *http.Request) {
 	var params = r.URL.Query()
-	var target = params.Get("target")
+	var repo = params.Get("repo")
+	var tag = params.Get("tag")
 	var registry = prometheus.NewRegistry()
 	var start = time.Now()
-	var log = log.With("repo", target)
-	registry.MustRegister(majorGauge)
-	registry.MustRegister(minorGauge)
-	registry.MustRegister(patchGauge)
+	var log = log.With("repo", repo)
+	registry.MustRegister(updateGauge)
 	registry.MustRegister(probeDurationGauge)
-	if target == "" {
-		http.Error(w, "target parameter is missing", http.StatusBadRequest)
+	if repo == "" {
+		http.Error(w, "repo parameter is missing", http.StatusBadRequest)
+		return
+	}
+	if tag == "" {
+		http.Error(w, "tag parameter is missing", http.StatusBadRequest)
+		return
+	}
+	currentVersion, err := semver.NewVersion(tag)
+	if err != nil {
+		http.Error(w, "tag is not in semver format", http.StatusBadRequest)
 		return
 	}
 	req, _ := http.NewRequest(
 		http.MethodGet,
-		fmt.Sprintf("https://api.github.com/repos/%s/releases", target),
+		fmt.Sprintf("https://api.github.com/repos/%s/releases", repo),
 		nil,
 	)
 	if token != "" {
@@ -111,6 +111,7 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to parse body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	var found bool
 	for _, release := range releases {
 		if release.Draft || release.Prerelease {
 			continue
@@ -123,12 +124,26 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 		if version.Prerelease() != "" {
 			continue
 		}
-		log.Infof("latest %s version is %s", target, version)
-		majorGauge.Set(float64(version.Major()))
-		minorGauge.Set(float64(version.Minor()))
-		patchGauge.Set(float64(version.Patch()))
+		log.Infof(
+			"checking if current version (%s) is lower than latest (%s)",
+			currentVersion,
+			version,
+		)
+		updateGauge.WithLabelValues(currentVersion.String(), version.String()).Set(boolToFloat(!version.GreaterThan(currentVersion)))
+		found = true
 		break
+	}
+	if !found {
+		// repo probably doesnt have any releases at all
+		updateGauge.WithLabelValues(currentVersion.String(), "unknown").Set(1)
 	}
 	probeDurationGauge.Set(time.Since(start).Seconds())
 	promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+}
+
+func boolToFloat(b bool) float64 {
+	if b {
+		return 1.0
+	}
+	return 0.0
 }
