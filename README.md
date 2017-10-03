@@ -19,14 +19,14 @@ docker run -p 9222:9222 caarlos0/version_exporter
 On the prometheus settings, add the domain_expoter prober:
 
 ```yaml
-- job_name: domain
+- job_name: version
   scrape_interval: 2h
   metrics_path: /probe
   relabel_configs:
     - source_labels: [__address__]
       target_label: __param_target
     - source_labels: [__param_target]
-      target_label: domain
+      target_label: repo
     - target_label: __address__
       replacement: localhost:9222 # version_exporter address
   static_configs:

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/masterminds/semver"
@@ -17,6 +18,7 @@ import (
 var (
 	bind    = kingpin.Flag("bind", "addr to bind the server").Default(":9222").String()
 	version = "master"
+	token   = os.Getenv("GITHUB_TOKEN")
 
 	majorGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "latest_version_major",
@@ -65,6 +67,7 @@ func main() {
 	}
 }
 
+// Release from github api
 type Release struct {
 	TagName     string    `json:"tag_name,omitempty"`
 	Draft       bool      `json:"draft,omitempty"`
@@ -86,7 +89,15 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "target parameter is missing", http.StatusBadRequest)
 		return
 	}
-	resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/releases", target))
+	req, _ := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("https://api.github.com/repos/%s/releases", target),
+		nil,
+	)
+	if token != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("token %s", token))
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		http.Error(w, "failed to get repository releases", http.StatusBadRequest)
 		return
@@ -112,6 +123,7 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 		if version.Prerelease() != "" {
 			continue
 		}
+		log.Infof("latest %s version is %s", target, version)
 		majorGauge.Set(float64(version.Major()))
 		minorGauge.Set(float64(version.Minor()))
 		patchGauge.Set(float64(version.Patch()))
