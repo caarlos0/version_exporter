@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	bind    = kingpin.Flag("bind", "addr to bind the server").Default(":9222").String()
+	bind    = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
 	version = "master"
 	token   = os.Getenv("GITHUB_TOKEN")
 
