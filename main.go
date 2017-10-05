@@ -7,9 +7,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/masterminds/semver"
 
 	"github.com/alecthomas/kingpin"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -86,32 +89,44 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	currentVersion, err := semver.NewVersion(tag)
 	if err != nil {
-		http.Error(w, "tag is not in semver format", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	req, _ := http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("https://api.github.com/repos/%s/releases", repo),
-		nil,
-	)
-	if token != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("token %s", token))
-	}
-	resp, err := http.DefaultClient.Do(req)
+	version, err := findLatest(repo)
 	if err != nil {
-		http.Error(w, "failed to get repository releases", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if resp.StatusCode != http.StatusOK {
-		http.Error(w, fmt.Sprintf("github responded with %d", resp.StatusCode), http.StatusBadRequest)
-		return
+	if version == nil {
+		// repo probably doesnt have any releases at all
+		updateGauge.WithLabelValues(currentVersion.String(), "unknown").Set(1)
+	} else {
+		log.Infof(
+			"checking current version (%s) against latest (%s)",
+			currentVersion,
+			version,
+		)
+		updateGauge.WithLabelValues(
+			currentVersion.String(),
+			version.String(),
+		).Set(boolToFloat(!version.GreaterThan(currentVersion)))
 	}
-	var releases []Release
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-		http.Error(w, "failed to parse body: "+err.Error(), http.StatusBadRequest)
-		return
+	probeDurationGauge.Set(time.Since(start).Seconds())
+	promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+}
+
+func boolToFloat(b bool) float64 {
+	if b {
+		return 1.0
 	}
-	var found bool
+	return 0.0
+}
+
+func findLatest(repo string) (*semver.Version, error) {
+	releases, err := findReleases(repo)
+	if err != nil {
+		return nil, err
+	}
 	for _, release := range releases {
 		if release.Draft || release.Prerelease {
 			continue
@@ -124,26 +139,30 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 		if version.Prerelease() != "" {
 			continue
 		}
-		log.Infof(
-			"checking if current version (%s) is lower than latest (%s)",
-			currentVersion,
-			version,
-		)
-		updateGauge.WithLabelValues(currentVersion.String(), version.String()).Set(boolToFloat(!version.GreaterThan(currentVersion)))
-		found = true
-		break
+		return version, nil
 	}
-	if !found {
-		// repo probably doesnt have any releases at all
-		updateGauge.WithLabelValues(currentVersion.String(), "unknown").Set(1)
-	}
-	probeDurationGauge.Set(time.Since(start).Seconds())
-	promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+	return nil, nil
 }
 
-func boolToFloat(b bool) float64 {
-	if b {
-		return 1.0
+func findReleases(repo string) ([]Release, error) {
+	var releases []Release
+	req, _ := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("https://api.github.com/repos/%s/releases", repo),
+		nil,
+	)
+	if token != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("token %s", token))
 	}
-	return 0.0
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return releases, errors.Wrap(err, "failed to get repository releases")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return releases, errors.Wrap(err, "github responded a non-200 status code")
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return releases, errors.Wrap(err, "failed to parse the response body")
+	}
+	return releases, nil
 }
