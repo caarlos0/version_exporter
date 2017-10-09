@@ -5,13 +5,13 @@ Exports the expiration time of your domains as prometheus metrics.
 ## Running
 
 ```console
-./version_exporter -b ":9222"
+./version_exporter -b ":9333"
 ```
 
 Or with docker:
 
 ```console
-docker run -p 9222:9222 caarlos0/version_exporter
+docker run -p 9333:9333 caarlos0/version_exporter
 ```
 
 ## Configuration
@@ -33,7 +33,7 @@ scrape_configs:
       - source_labels: [__param_repo]
         target_label: repo
       - target_label: __address__
-        replacement: localhost:9222 # version_exporter address
+        replacement: localhost:9333 # version_exporter address
     static_configs:
       - targets:
         - prometheus/prometheus?tag=v1.7.1
