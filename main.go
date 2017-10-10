@@ -21,6 +21,7 @@ import (
 var (
 	bind    = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
 	debug   = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
+	version = "dev"
 	token   = os.Getenv("GITHUB_TOKEN")
 
 	updateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
