@@ -44,7 +44,7 @@ func main() {
 	kingpin.Parse()
 
 	if *debug {
-		log.Base().SetLevel("debug")
+		_ = log.Base().SetLevel("debug")
 		log.Debug("enabled debug mode")
 	}
 
