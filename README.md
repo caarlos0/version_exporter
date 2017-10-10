@@ -49,11 +49,15 @@ Alerting rules example:
 ```rules
 ALERT OutdatedSoftware
   IF up_to_date == 0
-  FOR 10m
+  FOR 30m
+  LABELS {
+    severity = "WARNING",
+  }
   ANNOTATIONS {
     description = "we are running the version {{ $labels.current }} of {{ $labels.repo }}, but version {{ $labels.latest }} is available",
     summary = "{{ $labels.repo }}: new version available",
   }
+
 ```
 
 ## Building locally

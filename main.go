@@ -24,10 +24,10 @@ var (
 	version = "dev"
 	token   = os.Getenv("GITHUB_TOKEN")
 
-	updateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	updateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "up_to_date",
 		Help: "will be 0 if there is a new version available",
-	}, []string{"current", "latest"})
+	})
 	probeDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "probe_duration_seconds",
 		Help: "Returns how long the probe took to complete in seconds",
@@ -84,11 +84,12 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 	var params = r.URL.Query()
 	var repo = params.Get("repo")
 	var tag = params.Get("tag")
-	var registry = prometheus.NewRegistry()
 	var start = time.Now()
 	var log = log.With("repo", repo)
+	var registry = prometheus.NewRegistry()
 	registry.MustRegister(updateGauge)
 	registry.MustRegister(probeDurationGauge)
+	registry.MustRegister(probeErrorsGauge)
 	if repo == "" {
 		probeErrorsGauge.Inc()
 		http.Error(w, "repo parameter is missing", http.StatusBadRequest)
@@ -113,17 +114,12 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if version == nil {
 		// repo probably doesnt have any releases at all
-		updateGauge.WithLabelValues(currentVersion.String(), "unknown").Set(1)
+		updateGauge.Set(1)
 	} else {
-		log.Infof(
-			"checking current version (%s) against latest (%s)",
-			currentVersion,
-			version,
-		)
-		updateGauge.WithLabelValues(
-			currentVersion.String(),
-			version.String(),
-		).Set(boolToFloat(!version.GreaterThan(currentVersion)))
+		log.With("current", currentVersion).With("latest", version).
+			With("up_to_date", version.Equal(currentVersion)).
+			Debug("reporting")
+		updateGauge.Set(boolToFloat(!version.GreaterThan(currentVersion)))
 	}
 	probeDurationGauge.Set(time.Since(start).Seconds())
 	promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
