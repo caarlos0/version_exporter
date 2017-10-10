@@ -139,7 +139,8 @@ func findLatest(repo string) (*semver.Version, error) {
 		}
 		version, err := semver.NewVersion(release.TagName)
 		if err != nil {
-			log.With("error", err).Errorf("failed to parse %s", release.TagName)
+			log.With("error", err).With("repo", repo).With("tag", release.TagName).
+				Errorf("failed to parse %s", release.TagName)
 			continue
 		}
 		if version.Prerelease() != "" {
