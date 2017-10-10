@@ -32,6 +32,10 @@ var (
 		Name: "probe_duration_seconds",
 		Help: "Returns how long the probe took to complete in seconds",
 	})
+	probeErrorsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "probe_error_count",
+		Help: "Returns the count of probe errors",
+	})
 )
 
 func main() {
@@ -86,20 +90,24 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 	registry.MustRegister(updateGauge)
 	registry.MustRegister(probeDurationGauge)
 	if repo == "" {
+		probeErrorsGauge.Inc()
 		http.Error(w, "repo parameter is missing", http.StatusBadRequest)
 		return
 	}
 	if tag == "" {
+		probeErrorsGauge.Inc()
 		http.Error(w, "tag parameter is missing", http.StatusBadRequest)
 		return
 	}
 	currentVersion, err := semver.NewVersion(tag)
 	if err != nil {
+		probeErrorsGauge.Inc()
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	version, err := findLatest(repo)
 	if err != nil {
+		probeErrorsGauge.Inc()
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
