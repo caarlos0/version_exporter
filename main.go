@@ -20,7 +20,7 @@ import (
 
 var (
 	bind    = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
-	version = "master"
+	debug   = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
 	token   = os.Getenv("GITHUB_TOKEN")
 
 	updateGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -38,7 +38,12 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	log.Info("starting version_exporter", version)
+	if *debug {
+		log.Base().SetLevel("debug")
+		log.Debug("enabled debug mode")
+	}
+
+	log.Info("starting version_exporter ", version)
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/probe", probeHandler)
