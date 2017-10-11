@@ -1,11 +1,15 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/caarlos0/version_exporter/certs"
 
 	"github.com/pkg/errors"
 
@@ -23,6 +27,8 @@ var (
 	debug   = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
 	version = "dev"
 	token   = os.Getenv("GITHUB_TOKEN")
+
+	client *http.Client
 
 	updateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "up_to_date",
@@ -49,6 +55,16 @@ func main() {
 	}
 
 	log.Info("starting version_exporter ", version)
+
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(certs.Certs)
+	client = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: pool,
+			},
+		},
+	}
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/probe", probeHandler)
@@ -165,7 +181,7 @@ func findReleases(repo string) ([]Release, error) {
 	if token != "" {
 		req.Header.Add("Authorization", fmt.Sprintf("token %s", token))
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return releases, errors.Wrap(err, "failed to get repository releases")
 	}
