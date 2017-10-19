@@ -29,19 +29,6 @@ var (
 	token   = os.Getenv("GITHUB_TOKEN")
 
 	client *http.Client
-
-	updateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "up_to_date",
-		Help: "will be 0 if there is a new version available",
-	})
-	probeDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "probe_duration_seconds",
-		Help: "Returns how long the probe took to complete in seconds",
-	})
-	probeErrorsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "probe_error_count",
-		Help: "Returns the count of probe errors",
-	})
 )
 
 func main() {
@@ -102,6 +89,18 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 	var tag = params.Get("tag")
 	var start = time.Now()
 	var log = log.With("repo", repo)
+	var updateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "up_to_date",
+		Help: "will be 0 if there is a new version available",
+	})
+	var probeDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "probe_duration_seconds",
+		Help: "Returns how long the probe took to complete in seconds",
+	})
+	var probeErrorsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "probe_error_count",
+		Help: "Returns the count of probe errors",
+	})
 	var registry = prometheus.NewRegistry()
 	registry.MustRegister(updateGauge)
 	registry.MustRegister(probeDurationGauge)
@@ -128,10 +127,7 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if version == nil {
-		// repo probably doesnt have any releases at all
-		updateGauge.Set(1)
-	} else {
+	if version != nil {
 		log.With("current", currentVersion).With("latest", version).
 			With("up_to_date", version.Equal(currentVersion)).
 			Debug("reporting")
