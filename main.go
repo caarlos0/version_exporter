@@ -121,7 +121,7 @@ func probeHandler(w http.ResponseWriter, r *http.Request) {
 	if version != nil {
 		log.With("current", currentVersion).With("latest", version).
 			With("up_to_date", version.Equal(currentVersion)).
-			Info("checked")
+			Debug("checked")
 		updateGauge.Set(boolToFloat(!version.GreaterThan(currentVersion)))
 	}
 	probeDurationGauge.Set(time.Since(start).Seconds())
