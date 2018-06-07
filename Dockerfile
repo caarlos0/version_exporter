@@ -1,5 +1,4 @@
-FROM scratch
+FROM gcr.io/distroless/base
 EXPOSE 9333
-WORKDIR /
-COPY version_exporter .
-ENTRYPOINT ["./version_exporter"]
+COPY version_exporter /
+ENTRYPOINT ["/version_exporter"]

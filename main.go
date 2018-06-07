@@ -1,22 +1,15 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/caarlos0/version_exporter/certs"
-
-	"github.com/pkg/errors"
-
-	"github.com/masterminds/semver"
-
 	"github.com/alecthomas/kingpin"
-
+	"github.com/masterminds/semver"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -27,8 +20,6 @@ var (
 	debug   = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
 	version = "dev"
 	token   = os.Getenv("GITHUB_TOKEN")
-
-	client *http.Client
 )
 
 func main() {
@@ -43,16 +34,6 @@ func main() {
 
 	log.Info("starting version_exporter ", version)
 
-	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(certs.Certs)
-	client = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: pool,
-			},
-		},
-	}
-
 	http.Handle("/metrics", promhttp.Handler())
 	http.HandleFunc("/probe", probeHandler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +44,7 @@ func main() {
 			<body>
 				<h1>Version Exporter</h1>
 				<p><a href="/metrics">Metrics</a></p>
-				<p><a href="/probe?repo=prometheus/prometheus&tag=v1.7.2">probe prometheus/prometheus</a></p>
+				<p><a href="/probe?repo=prometheus/prometheus&tag=v2.2.1">probe prometheus/prometheus</a></p>
 			</body>
 			</html>
 			`,
@@ -168,7 +149,7 @@ func findReleases(repo string) ([]Release, error) {
 	if token != "" {
 		req.Header.Add("Authorization", fmt.Sprintf("token %s", token))
 	}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return releases, errors.Wrap(err, "failed to get repository releases")
 	}
