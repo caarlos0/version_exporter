@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,13 +11,11 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin"
-	"github.com/google/go-github/github"
 	"github.com/masterminds/semver"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
-	"golang.org/x/oauth2"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -71,16 +68,7 @@ func main() {
 		}
 	}()
 
-	var ctx = context.Background()
-	var client = github.NewClient(nil)
-	if *token != "" {
-		client = github.NewClient(oauth2.NewClient(
-			ctx,
-			oauth2.StaticTokenSource(&oauth2.Token{AccessToken: *token}),
-		))
-	}
-
-	go keepCollecting(ctx, client, &config)
+	go keepCollecting(&config)
 	prometheus.MustRegister(scrapeDuration)
 	prometheus.MustRegister(upToDate)
 	http.Handle("/metrics", promhttp.Handler())
@@ -104,9 +92,9 @@ func main() {
 	}
 }
 
-func keepCollecting(ctx context.Context, client *github.Client, config *Config) {
+func keepCollecting(config *Config) {
 	for {
-		if err := collectOnce(ctx, client, config); err != nil {
+		if err := collectOnce(config); err != nil {
 			log.Error("failed to collect:", err)
 		}
 		time.Sleep(*interval)
@@ -133,7 +121,7 @@ type Release struct {
 	PublishedAt time.Time `json:"published_at,omitempty"`
 }
 
-func collectOnce(ctx context.Context, client *github.Client, config *Config) error {
+func collectOnce(config *Config) error {
 	var start = time.Now()
 	for repo, c := range config.Repositories {
 		var log = log.With("repo", repo)
