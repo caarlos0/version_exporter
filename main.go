@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"golang.org/x/oauth2"
-	yaml "gopkg.in/yaml.v1"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const ns = "version"
@@ -50,10 +50,10 @@ type Config struct {
 }
 
 func main() {
-	kingpin.Version("version_releases_exporter version " + version)
+	kingpin.Version("version_exporter version " + version)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	log.Info("starting version_releases_exporter", version)
+	log.Info("starting version_exporter", version)
 
 	if *debug {
 		_ = log.Base().SetLevel("debug")
