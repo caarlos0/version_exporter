@@ -65,6 +65,7 @@ func main() {
 		for range configCh {
 			log.Info("reloading config...")
 			loadConfig(&config)
+			collectOnce(&config)
 		}
 	}()
 
