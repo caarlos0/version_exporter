@@ -1,0 +1,3 @@
+repositories:
+  prometheus/prometheus: ^2.1.0
+  caarlos0/version_exporter: 0.0.5

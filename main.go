@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin"
@@ -13,29 +16,63 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	yaml "gopkg.in/yaml.v2"
 )
 
+const ns = "version"
+
 var (
-	bind    = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
-	debug   = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
+	bind       = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
+	debug      = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
+	token      = kingpin.Flag("github.token", "github token").Envar("GITHUB_TOKEN").String()
+	configFile = kingpin.Flag("config.file", "config file").Default("config.yaml").ExistingFile()
+	interval   = kingpin.Flag("refresh.interval", "time between refreshes with github api").Default("15m").Duration()
+
 	version = "dev"
-	token   = os.Getenv("GITHUB_TOKEN")
+
+	scrapeDuration = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: prometheus.BuildFQName(ns, "", "scrape_duration_seconds"),
+		Help: "Returns how long the probe took to complete in seconds",
+	})
+	upToDate = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: prometheus.BuildFQName(ns, "", "up_to_date"),
+		Help: "Wether the repository latest version is in the specified semver range",
+	},
+		[]string{"repository", "constraint", "latest"},
+	)
 )
+
+type Config struct {
+	Repositories map[string]string `yaml:"repositories"`
+}
 
 func main() {
 	kingpin.Version("version_exporter version " + version)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+	log.Info("starting version_exporter", version)
 
 	if *debug {
 		_ = log.Base().SetLevel("debug")
 		log.Debug("enabled debug mode")
 	}
 
-	log.Info("starting version_exporter ", version)
+	var config Config
+	loadConfig(&config)
+	var configCh = make(chan os.Signal, 1)
+	signal.Notify(configCh, syscall.SIGHUP)
+	go func() {
+		for range configCh {
+			log.Info("reloading config...")
+			loadConfig(&config)
+		}
+	}()
 
+	go keepCollecting(&config)
+	prometheus.MustRegister(scrapeDuration)
+	prometheus.MustRegister(upToDate)
 	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/probe", probeHandler)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(
 			w, `
@@ -44,7 +81,6 @@ func main() {
 			<body>
 				<h1>Version Exporter</h1>
 				<p><a href="/metrics">Metrics</a></p>
-				<p><a href="/probe?repo=prometheus/prometheus&tag=v2.2.1">probe prometheus/prometheus</a></p>
 			</body>
 			</html>
 			`,
@@ -56,6 +92,27 @@ func main() {
 	}
 }
 
+func keepCollecting(config *Config) {
+	for {
+		if err := collectOnce(config); err != nil {
+			log.Error("failed to collect:", err)
+		}
+		time.Sleep(*interval)
+	}
+}
+
+func loadConfig(config *Config) {
+	bts, err := ioutil.ReadFile(*configFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var newConfig Config
+	if err := yaml.Unmarshal(bts, &newConfig); err != nil {
+		log.Fatal(err)
+	}
+	*config = newConfig
+}
+
 // Release from github api
 type Release struct {
 	TagName     string    `json:"tag_name,omitempty"`
@@ -64,49 +121,31 @@ type Release struct {
 	PublishedAt time.Time `json:"published_at,omitempty"`
 }
 
-func probeHandler(w http.ResponseWriter, r *http.Request) {
-	var params = r.URL.Query()
-	var repo = params.Get("repo")
-	var tag = params.Get("tag")
+func collectOnce(config *Config) error {
 	var start = time.Now()
-	var log = log.With("repo", repo)
-	var updateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "up_to_date",
-		Help: "will be 0 if there is a new version available",
-	})
-	var probeDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "probe_duration_seconds",
-		Help: "Returns how long the probe took to complete in seconds",
-	})
-	var registry = prometheus.NewRegistry()
-	registry.MustRegister(updateGauge)
-	registry.MustRegister(probeDurationGauge)
-	if repo == "" {
-		http.Error(w, "repo parameter is missing", http.StatusBadRequest)
-		return
+	for repo, c := range config.Repositories {
+		var log = log.With("repo", repo)
+		log.Info("collecting")
+		constraint, err := semver.NewConstraint(c)
+		if err != nil {
+			return err
+		}
+		version, err := findLatest(repo)
+		if err != nil {
+			return err
+		}
+		if version != nil {
+			var up = constraint.Check(version)
+			log.With("constraint", constraint).
+				With("latest", version).
+				With("up_to_date", up).
+				Debug("checked")
+			upToDate.WithLabelValues(repo, c, version.String()).
+				Set(boolToFloat(up))
+		}
 	}
-	if tag == "" {
-		http.Error(w, "tag parameter is missing", http.StatusBadRequest)
-		return
-	}
-	currentVersion, err := semver.NewVersion(tag)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	version, err := findLatest(repo)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if version != nil {
-		log.With("current", currentVersion).With("latest", version).
-			With("up_to_date", version.Equal(currentVersion)).
-			Debug("checked")
-		updateGauge.Set(boolToFloat(!version.GreaterThan(currentVersion)))
-	}
-	probeDurationGauge.Set(time.Since(start).Seconds())
-	promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+	scrapeDuration.Set(time.Since(start).Seconds())
+	return nil
 }
 
 func boolToFloat(b bool) float64 {
@@ -146,8 +185,8 @@ func findReleases(repo string) ([]Release, error) {
 		fmt.Sprintf("https://api.github.com/repos/%s/releases", repo),
 		nil,
 	)
-	if token != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("token %s", token))
+	if *token != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("token %s", *token))
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
