@@ -1,6 +1,9 @@
 SOURCE_FILES?=./...
 TEST_PATTERN?=.
 TEST_OPTIONS?=
+OS=$(shell uname -s)
+
+export PATH := ./bin:$(PATH)
 
 setup:
 	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh
