@@ -5,7 +5,7 @@ Exports the expiration time of your domains as prometheus metrics.
 ## Running
 
 ```console
-./version_exporter --bind ":9333"
+version_exporter --bind ":9333"
 ```
 
 Or with docker:
@@ -32,21 +32,30 @@ services:
     - .env
 ```
 
-## Configuration
+You can personalize the `config.yaml` file like following:
 
-On the prometheus settings, add the domain_expoter prober:
+```yaml
+repositories:
+  # repository: semver constraint (check https://github.com/masterminds/semver#working-with-pre-release-versions)
+  prometheus/alertmanager: ~v0.14.0
+  prometheus/prometheus: ^2.1.0
+  caarlos0/version_exporter: 0.0.5
+```
+
+> You can reload the config file by sending a `SIGHUP` to version_exporter process.
+
+On the prometheus settings, add the version_exporter job:
 
 ```yaml
 scrape_configs:
   - job_name: version
     static_configs:
-      - targets: [ 'version_exporter:9222' ]
+      - targets: [ 'version_exporter:9333' ]
 ```
 
-It works more or less like prometheus's
-[blackbox_exporter](https://github.com/prometheus/blackbox_exporter).
-
 Alerting rules example:
+
+> TODO: update this
 
 ```rules
 ALERT OutdatedSoftware
