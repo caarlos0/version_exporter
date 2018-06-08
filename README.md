@@ -5,13 +5,31 @@ Exports the expiration time of your domains as prometheus metrics.
 ## Running
 
 ```console
-./version_exporter -b ":9333"
+./version_exporter --bind ":9333"
 ```
 
 Or with docker:
 
 ```console
-docker run -p 9333:9333 caarlos0/version_exporter
+docker run -p 127.0.0.1:9333:9333 -v config.yaml:/config.yaml:ro caarlos0/version_exporter
+```
+
+Or with docker-compose:
+
+```yaml
+version: '3'
+services:
+  releases:
+    image: caarlos0/gversion_exporter:v1
+    restart: always
+    volumes:
+    - /path/to/config.yml:/etc/config.yml:ro
+    command:
+    - '--config.file=/etc/config.yml'
+    ports:
+    - 127.0.0.1:9333:9333
+    env_file:
+    - .env
 ```
 
 ## Configuration
@@ -21,24 +39,8 @@ On the prometheus settings, add the domain_expoter prober:
 ```yaml
 scrape_configs:
   - job_name: version
-    scrape_interval: 1m
-    metrics_path: /probe
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_repo
-        regex: ^(.*)\?tag=.*$
-      - source_labels: [__address__]
-        target_label: __param_tag
-        regex: ^.*?tag=(.*)$
-      - source_labels: [__param_repo]
-        target_label: repo
-      - target_label: __address__
-        replacement: localhost:9333 # version_exporter address
     static_configs:
-      - targets:
-        - prometheus/prometheus?tag=v1.7.1
-        - goreleaser/goreleaser?tag=v0.34.0
-        - caarlos0/version_exporter?tag=v0.0.1
+      - targets: [ 'version_exporter:9222' ]
 ```
 
 It works more or less like prometheus's
