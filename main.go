@@ -65,6 +65,7 @@ func main() {
 		for range configCh {
 			log.Info("reloading config...")
 			loadConfig(&config)
+			upToDate.Reset()
 			if err := collectOnce(&config); err != nil {
 				log.Error("failed to collect:", err)
 			}
