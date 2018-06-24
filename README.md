@@ -11,7 +11,7 @@ version_exporter --bind ":9333"
 Or with docker:
 
 ```console
-docker run -p 127.0.0.1:9333:9333 -v config.yaml:/config.yaml:ro caarlos0/version_exporter
+docker run -p 127.0.0.1:9333:9333 -v $PWD/config.yaml:/config.yaml caarlos0/version_exporter
 ```
 
 Or with docker-compose:
@@ -23,7 +23,7 @@ services:
     image: caarlos0/gversion_exporter:v1
     restart: always
     volumes:
-    - /path/to/config.yml:/etc/config.yml:ro
+    - /path/to/config.yml:/etc/config.yml
     command:
     - '--config.file=/etc/config.yml'
     ports:
