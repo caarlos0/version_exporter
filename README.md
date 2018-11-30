@@ -1,6 +1,6 @@
 # version_exporter
 
-Exports the expiration time of your domains as prometheus metrics.
+Exports versions of Github projects as prometheus metrics, with contraint version, from a config file, and latest version, fetched from Github, as labels.
 
 ## Running
 
