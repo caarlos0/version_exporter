@@ -1,19 +1,19 @@
 package main
 
 import (
-	"net/http"
 	"fmt"
+	"net/http"
 
-
+	"github.com/alecthomas/kingpin"
 	"github.com/caarlos0/version_exporter/collector"
 	"github.com/caarlos0/version_exporter/config"
-	"github.com/alecthomas/kingpin"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 )
 
+// nolint: gochecknoglobals
 var (
 	bind       = kingpin.Flag("bind", "addr to bind the server").Default(":9333").String()
 	debug      = kingpin.Flag("debug", "show debug logs").Default("false").Bool()
@@ -43,7 +43,7 @@ func main() {
 		c.Flush()
 	})
 
-	prometheus.MustRegister(collector.NewVersionCollector(&cfg,c,*token))
+	prometheus.MustRegister(collector.NewVersionCollector(&cfg, c, *token))
 	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

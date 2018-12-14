@@ -67,7 +67,7 @@ func (c *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	var start = time.Now()
 	for repo, constraint := range c.config.Repositories {
 		var log = log.With("repo", repo)
-		log.Info("collecting")
+		log.Debug("collecting")
 		sconstraint, err := semver.NewConstraint(constraint)
 		if err != nil {
 			log.Errorf("failed to collect for %s: %s", repo, err.Error())

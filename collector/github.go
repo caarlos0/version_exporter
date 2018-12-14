@@ -29,10 +29,13 @@ func boolToFloat(b bool) float64 {
 }
 
 func findLatest(token, repo string, c *cache.Cache) (*semver.Version, error) {
+	var log = log.With("repo", repo)
 	version, found := c.Get(repo)
 	if found {
+		log.Debug("using result from cache")
 		return version.(*semver.Version), nil
 	}
+	log.Info("refreshing")
 	releases, err := findReleases(token, repo)
 	if err != nil {
 		return nil, err
@@ -43,7 +46,7 @@ func findLatest(token, repo string, c *cache.Cache) (*semver.Version, error) {
 		}
 		version, err := semver.NewVersion(release.TagName)
 		if err != nil {
-			log.With("error", err).With("repo", repo).
+			log.With("error", err).
 				With("tag", release.TagName).
 				Errorf("failed to parse %s", release.TagName)
 			continue
