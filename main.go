@@ -39,7 +39,7 @@ func main() {
 
 	var cfg config.Config
 	config.Load(*configFile, &cfg, func() {
-		log.Info("flushing cache...")
+		log.Debug("flushing cache...")
 		c.Flush()
 	})
 

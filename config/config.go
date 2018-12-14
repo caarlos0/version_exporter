@@ -38,7 +38,7 @@ func Load(file string, config *Config, onReload func()) {
 	signal.Notify(configCh, syscall.SIGHUP)
 	go func() {
 		for range configCh {
-			log.Info("reloading config...")
+			log.Debug("reloading config...")
 			if err := doLoad(file, config); err != nil {
 				log.Fatalln("failed to reload config: ", err)
 			}
