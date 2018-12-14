@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -29,19 +30,9 @@ var (
 	interval   = kingpin.Flag("refresh.interval", "time between refreshes with github api").Default("15m").Duration()
 
 	version = "dev"
-
-	scrapeDuration = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: prometheus.BuildFQName(ns, "", "scrape_duration_seconds"),
-		Help: "Returns how long the probe took to complete in seconds",
-	})
-	upToDate = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: prometheus.BuildFQName(ns, "", "up_to_date"),
-		Help: "Wether the repository latest version is in the specified semver range",
-	},
-		[]string{"repository", "constraint", "latest"},
-	)
 )
 
+// Config struct representing the config file.
 type Config struct {
 	Repositories map[string]string `yaml:"repositories"`
 }
@@ -65,16 +56,11 @@ func main() {
 		for range configCh {
 			log.Info("reloading config...")
 			loadConfig(&config)
-			upToDate.Reset()
-			if err := collectOnce(&config); err != nil {
-				log.Error("failed to collect:", err)
-			}
+			log.Info("config reloaded...")
 		}
 	}()
 
-	go keepCollecting(&config)
-	prometheus.MustRegister(scrapeDuration)
-	prometheus.MustRegister(upToDate)
+	prometheus.MustRegister(newReleasesCollector(&config))
 	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -93,15 +79,6 @@ func main() {
 	log.Info("listening on", *bind)
 	if err := http.ListenAndServe(*bind, nil); err != nil {
 		log.Fatalf("error starting server: %s", err)
-	}
-}
-
-func keepCollecting(config *Config) {
-	for {
-		if err := collectOnce(config); err != nil {
-			log.Error("failed to collect:", err)
-		}
-		time.Sleep(*interval)
 	}
 }
 
@@ -125,31 +102,98 @@ type Release struct {
 	PublishedAt time.Time `json:"published_at,omitempty"`
 }
 
-func collectOnce(config *Config) error {
+type releasesCollector struct {
+	mutex  sync.Mutex
+	config *Config
+
+	up             *prometheus.Desc
+	upToDate       *prometheus.Desc
+	scrapeDuration *prometheus.Desc
+}
+
+func newReleasesCollector(config *Config) prometheus.Collector {
+	const namespace = "github"
+	const subsystem = "version"
+	return &releasesCollector{
+		config: config,
+		up: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "up"),
+			"Exporter is being able to talk with GitHub API",
+			nil,
+			nil,
+		),
+		upToDate: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "up_to_date"),
+			"Wether the repository latest version is in the specified semantic versioning range",
+			[]string{"repository", "constraint", "latest"},
+			nil,
+		),
+		scrapeDuration: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "scrape_duration_seconds"),
+			"Returns how long the probe took to complete in seconds",
+			nil,
+			nil,
+		),
+	}
+}
+
+// Describe all metrics
+func (c *releasesCollector) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.up
+	ch <- c.upToDate
+	ch <- c.scrapeDuration
+}
+
+// Collect all metrics
+func (c *releasesCollector) Collect(ch chan<- prometheus.Metric) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	var success = true
 	var start = time.Now()
-	for repo, c := range config.Repositories {
+	for repo, constraint := range c.config.Repositories {
 		var log = log.With("repo", repo)
 		log.Info("collecting")
-		constraint, err := semver.NewConstraint(c)
+		sconstraint, err := semver.NewConstraint(constraint)
 		if err != nil {
-			return err
+			log.Errorf("failed to collect for %s: %s", repo, err.Error())
+			success = false
+			return
 		}
 		version, err := findLatest(repo)
 		if err != nil {
-			return err
+			log.Errorf("failed to collect for %s: %s", repo, err.Error())
+			success = false
+			return
 		}
 		if version != nil {
-			var up = constraint.Check(version)
+			var up = sconstraint.Check(version)
 			log.With("constraint", constraint).
 				With("latest", version).
 				With("up_to_date", up).
 				Debug("checked")
-			upToDate.WithLabelValues(repo, c, version.String()).
-				Set(boolToFloat(up))
+			ch <- prometheus.MustNewConstMetric(
+				c.upToDate,
+				prometheus.GaugeValue,
+				boolToFloat(up),
+				repo,
+				constraint,
+				version.String(),
+			)
 		}
 	}
-	scrapeDuration.Set(time.Since(start).Seconds())
-	return nil
+
+	ch <- prometheus.MustNewConstMetric(
+		c.up,
+		prometheus.GaugeValue,
+		boolToFloat(success),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.scrapeDuration,
+		prometheus.GaugeValue,
+		time.Since(start).Seconds(),
+	)
+
 }
 
 func boolToFloat(b bool) float64 {
