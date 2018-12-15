@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/alecthomas/kingpin"
+	"github.com/caarlos0/version_exporter/client"
 	"github.com/caarlos0/version_exporter/collector"
 	"github.com/caarlos0/version_exporter/config"
-	"github.com/caarlos0/version_exporter/client"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
