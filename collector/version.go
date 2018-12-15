@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/caarlos0/version_exporter/client"
 	"github.com/caarlos0/version_exporter/config"
-	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
 )
@@ -14,8 +14,7 @@ import (
 type versionCollector struct {
 	mutex  sync.Mutex
 	config *config.Config
-	cache  *cache.Cache
-	token  string
+	client client.Client
 
 	up             *prometheus.Desc
 	upToDate       *prometheus.Desc
@@ -23,13 +22,12 @@ type versionCollector struct {
 }
 
 // NewVersionCollector returns a versions collector
-func NewVersionCollector(config *config.Config, cache *cache.Cache, token string) prometheus.Collector {
+func NewVersionCollector(config *config.Config, client client.Client) prometheus.Collector {
 	const namespace = "version"
 	const subsystem = ""
 	return &versionCollector{
 		config: config,
-		cache:  cache,
-		token:  token,
+		client: client,
 		up: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subsystem, "up"),
 			"Exporter is being able to talk with GitHub API",
@@ -74,27 +72,28 @@ func (c *versionCollector) Collect(ch chan<- prometheus.Metric) {
 			success = false
 			return
 		}
-		version, err := findLatest(c.token, repo, c.cache)
+		version, err := getLatest(c.client, repo)
 		if err != nil {
 			log.Errorf("failed to collect for %s: %s", repo, err.Error())
 			success = false
 			return
 		}
-		if version != nil {
-			var up = sconstraint.Check(version)
-			log.With("constraint", constraint).
-				With("latest", version).
-				With("up_to_date", up).
-				Debug("checked")
-			ch <- prometheus.MustNewConstMetric(
-				c.upToDate,
-				prometheus.GaugeValue,
-				boolToFloat(up),
-				repo,
-				constraint,
-				version.String(),
-			)
+		if version == nil {
+			continue
 		}
+		var up = sconstraint.Check(version)
+		log.With("constraint", constraint).
+			With("latest", version).
+			With("up_to_date", up).
+			Debug("checked")
+		ch <- prometheus.MustNewConstMetric(
+			c.upToDate,
+			prometheus.GaugeValue,
+			boolToFloat(up),
+			repo,
+			constraint,
+			version.String(),
+		)
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -107,4 +106,38 @@ func (c *versionCollector) Collect(ch chan<- prometheus.Metric) {
 		prometheus.GaugeValue,
 		time.Since(start).Seconds(),
 	)
+}
+
+func getLatest(client client.Client, repo string) (*semver.Version, error) {
+	var log = log.With("repo", repo)
+	releases, err := client.Releases(repo)
+	if err != nil {
+		return nil, err
+	}
+	for _, release := range releases {
+		if release.Draft || release.Prerelease {
+			log.With("tag", release.TagName).Debug("ignored draft/prerelease")
+			continue
+		}
+		version, err := semver.NewVersion(release.TagName)
+		if err != nil {
+			log.With("error", err).
+				With("tag", release.TagName).
+				Errorf("failed to parse tag %s", release.TagName)
+			continue
+		}
+		if version.Prerelease() != "" {
+			log.With("tag", release.TagName).Debug("ignored prerelease")
+			continue
+		}
+		return version, nil
+	}
+	return nil, nil
+}
+
+func boolToFloat(b bool) float64 {
+	if b {
+		return 1.0
+	}
+	return 0.0
 }

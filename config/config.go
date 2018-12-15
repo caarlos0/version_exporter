@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/prometheus/common/log"
-
 	yaml "gopkg.in/yaml.v2"
 )
 

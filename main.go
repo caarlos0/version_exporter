@@ -7,6 +7,7 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/caarlos0/version_exporter/collector"
 	"github.com/caarlos0/version_exporter/config"
+	"github.com/caarlos0/version_exporter/client"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -35,15 +36,17 @@ func main() {
 		log.Debug("enabled debug mode")
 	}
 
-	var c = cache.New(*interval, *interval)
+	var cache = cache.New(*interval, *interval)
 
 	var cfg config.Config
 	config.Load(*configFile, &cfg, func() {
 		log.Debug("flushing cache...")
-		c.Flush()
+		cache.Flush()
 	})
 
-	prometheus.MustRegister(collector.NewVersionCollector(&cfg, c, *token))
+	var client = client.NewCachedClient(client.NewClient(*token), cache)
+
+	prometheus.MustRegister(collector.NewVersionCollector(&cfg, client))
 	http.Handle("/metrics", promhttp.Handler())
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
