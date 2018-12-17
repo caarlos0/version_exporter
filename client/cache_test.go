@@ -15,7 +15,7 @@ func TestCachedClient(t *testing.T) {
 			TagName: "v1.1.1",
 		},
 	}
-	var cli = NewCachedClient(fakeClient{result: &rel}, c)
+	var cli = NewCachedClient(cacheTestClient{result: &rel}, c)
 	var oldRel = rel
 
 	t.Run("get fresh", func(t *testing.T) {
@@ -39,10 +39,10 @@ func TestCachedClient(t *testing.T) {
 	})
 }
 
-type fakeClient struct {
+type cacheTestClient struct {
 	result *[]Release
 }
 
-func (f fakeClient) Releases(repo string) ([]Release, error) {
+func (f cacheTestClient) Releases(repo string) ([]Release, error) {
 	return *f.result, nil
 }

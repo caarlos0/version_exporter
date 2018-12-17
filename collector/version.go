@@ -70,13 +70,13 @@ func (c *versionCollector) Collect(ch chan<- prometheus.Metric) {
 		if err != nil {
 			log.Errorf("failed to collect for %s: %s", repo, err.Error())
 			success = false
-			return
+			continue
 		}
 		version, err := getLatest(c.client, repo)
 		if err != nil {
 			log.Errorf("failed to collect for %s: %s", repo, err.Error())
 			success = false
-			return
+			continue
 		}
 		if version == nil {
 			continue
