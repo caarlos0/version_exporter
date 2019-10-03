@@ -171,6 +171,7 @@ func testCollector(t *testing.T, collector prometheus.Collector, checker func(t 
 
 	resp, err := http.Get(srv.URL)
 	require.NoError(t, err)
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	checker(t, resp.StatusCode, string(body))

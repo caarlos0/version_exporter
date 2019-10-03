@@ -33,6 +33,7 @@ func (c githubClient) Releases(repo string) ([]Release, error) {
 	if err != nil {
 		return releases, errors.Wrap(err, "failed to get repository releases")
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return releases, errors.Wrap(err, "github responded a non-200 status code")
 	}
