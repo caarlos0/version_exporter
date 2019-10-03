@@ -18,7 +18,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20180601124529-94663424ae5a // indirect
 	github.com/sirupsen/logrus v1.0.5 // indirect
 	github.com/stretchr/testify v1.3.0
-	golang.org/x/crypto v0.0.0-20180606015541-b47b15873692 // indirect
+	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc // indirect
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
