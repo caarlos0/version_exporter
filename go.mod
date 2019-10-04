@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/common v0.7.0
 	github.com/stretchr/testify v1.3.0
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
-	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v3 v3.0.3 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
 
