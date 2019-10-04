@@ -1,7 +1,8 @@
 module github.com/caarlos0/version_exporter
 
 require (
-	github.com/Masterminds/semver v1.4.2
+	github.com/Masterminds/semver v1.5.0
+	github.com/Masterminds/semver/v3 v3.0.1
 	github.com/alecthomas/kingpin v2.2.6+incompatible
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
