@@ -6,20 +6,19 @@ build:
     - amd64
   env:
     - CGO_ENABLED=0
-brew:
-  github:
+brews:
+- github:
     owner: caarlos0
     name: homebrew-tap
   folder: Formula
 checksum:
   name_template: '{{ .ProjectName }}_checksums.txt'
-archive:
-  name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}'
+archives:
+  - name_template: '{{ .Binary }}_{{ .Os }}_{{ .Arch }}'
 dockers:
-  - image: caarlos0/version_exporter
+  - image_templates:
+    - 'caarlos0/version_exporter:latest'
+    - 'caarlos0/version_exporter:{{ .Tag }}'
+    - 'caarlos0/version_exporter:v{{ .Major }}'
     extra_files:
     - config.yaml
-    tag_templates:
-    - latest
-    - "{{ .Tag }}"
-    - "v{{ .Major }}"
