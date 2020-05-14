@@ -6,9 +6,9 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v1.1.0
-	github.com/prometheus/common v0.7.0
+	github.com/prometheus/common v0.10.0
 	github.com/stretchr/testify v1.3.0
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.2.4
 )
 
 go 1.13
