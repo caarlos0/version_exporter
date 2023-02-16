@@ -2,11 +2,11 @@ package config
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/prometheus/common/log"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -33,16 +33,15 @@ func Load(file string, config *Config, onReload func()) {
 	if err := doLoad(file, config); err != nil {
 		log.Fatalln("failed to load config: ", err)
 	}
-	var configCh = make(chan os.Signal, 1)
+	configCh := make(chan os.Signal, 1)
 	signal.Notify(configCh, syscall.SIGHUP)
 	go func() {
 		for range configCh {
-			log.Debug("reloading config...")
 			if err := doLoad(file, config); err != nil {
 				log.Fatalln("failed to reload config: ", err)
 			}
 			onReload()
-			log.Info("config reloaded...")
+			log.Println("config reloaded...")
 		}
 	}()
 }

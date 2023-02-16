@@ -1,20 +1,22 @@
 # version_exporter
 
-Exports versions of Github projects as prometheus metrics, with contraint version, from a config file, and latest version, fetched from Github, as labels.
+Exports versions of GitHub projects as Prometheus metrics, with constraint
+version, from a configuration file, and latest version, fetched from GitHub, as
+labels.
 
 ## Running
 
-```console
+```bash
 version_exporter --bind ":9333"
 ```
 
 Or with docker:
 
-```console
+```bash
 docker run -p 127.0.0.1:9333:9333 -v $PWD/config.yaml:/config.yaml caarlos0/version_exporter
 ```
 
-Or with docker-compose:
+Or with `docker-compose`:
 
 ```yaml
 version: '3'
@@ -42,9 +44,10 @@ repositories:
   caarlos0/version_exporter: 0.0.5
 ```
 
-> You can reload the config file by sending a `SIGHUP` to version_exporter process.
+> You can reload the configuration file by sending a `SIGHUP` to
+> `version_exporter` process.
 
-On the prometheus settings, add the version_exporter job:
+On the Prometheus settings, add the `version_exporter` job:
 
 ```yaml
 scrape_configs:
@@ -73,18 +76,13 @@ groups:
 
 Install the needed tooling and libs:
 
-```console
-make setup
+```bash
+go mod tidy
 ```
 
 Run with:
 
-```console
+```bash
 go run main.go
 ```
 
-Run tests with:
-
-```console
-make test
-```

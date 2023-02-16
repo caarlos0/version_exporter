@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
-	"github.com/alecthomas/kingpin"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/caarlos0/version_exporter/client"
 	"github.com/caarlos0/version_exporter/collector"
 	"github.com/caarlos0/version_exporter/config"
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
 )
 
 // nolint: gochecknoglobals
@@ -29,22 +29,23 @@ func main() {
 	kingpin.Version("version_exporter version " + version)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	log.Info("starting version_exporter")
+	// ("starting version_exporter")
 
 	if *debug {
-		_ = log.Base().SetLevel("debug")
-		log.Debug("enabled debug mode")
+		log.Println("enabled debug mode")
 	}
 
-	var cache = cache.New(*interval, *interval)
+	cache := cache.New(*interval, *interval)
 
 	var cfg config.Config
 	config.Load(*configFile, &cfg, func() {
-		log.Debug("flushing cache...")
+		if *debug {
+			log.Println("flushing cache...")
+		}
 		cache.Flush()
 	})
 
-	var client = client.NewCachedClient(client.NewClient(*token), cache)
+	client := client.NewCachedClient(client.NewClient(*token), cache)
 
 	prometheus.MustRegister(collector.NewVersionCollector(&cfg, client))
 	http.Handle("/metrics", promhttp.Handler())
@@ -62,7 +63,7 @@ func main() {
 			`,
 		)
 	})
-	log.Info("listening on ", *bind)
+	log.Println("listening on ", *bind)
 	if err := http.ListenAndServe(*bind, nil); err != nil {
 		log.Fatalf("error starting server: %s", err)
 	}

@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/caarlos0/version_exporter/client"
 	"github.com/caarlos0/version_exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 )
 
 type versionCollector struct {
@@ -61,31 +61,25 @@ func (c *versionCollector) Collect(ch chan<- prometheus.Metric) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	var success = true
-	var start = time.Now()
+	success := true
+	start := time.Now()
 	for repo, constraint := range c.config.Repositories {
-		var log = log.With("repo", repo)
-		log.Debug("collecting")
 		sconstraint, err := semver.NewConstraint(constraint)
 		if err != nil {
-			log.Errorf("failed to collect for %s: %s", repo, err.Error())
+			log.Printf("failed to collect for %s: %s", repo, err.Error())
 			success = false
 			continue
 		}
 		version, err := getLatest(c.client, repo)
 		if err != nil {
-			log.Errorf("failed to collect for %s: %s", repo, err.Error())
+			log.Printf("failed to collect for %s: %s", repo, err.Error())
 			success = false
 			continue
 		}
 		if version == nil {
 			continue
 		}
-		var up = sconstraint.Check(version)
-		log.With("constraint", constraint).
-			With("latest", version).
-			With("up_to_date", up).
-			Debug("checked")
+		up := sconstraint.Check(version)
 		ch <- prometheus.MustNewConstMetric(
 			c.upToDate,
 			prometheus.GaugeValue,
@@ -109,25 +103,20 @@ func (c *versionCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func getLatest(client client.Client, repo string) (*semver.Version, error) {
-	var log = log.With("repo", repo)
 	releases, err := client.Releases(repo)
 	if err != nil {
 		return nil, err
 	}
 	for _, release := range releases {
 		if release.Draft || release.Prerelease {
-			log.With("tag", release.TagName).Debug("ignored draft/prerelease")
 			continue
 		}
 		version, err := semver.NewVersion(release.TagName)
 		if err != nil {
-			log.With("error", err).
-				With("tag", release.TagName).
-				Errorf("failed to parse tag %s", release.TagName)
+			log.Printf("failed to parse tag %s: %s", release.TagName, err)
 			continue
 		}
 		if version.Prerelease() != "" {
-			log.With("tag", release.TagName).Debug("ignored prerelease")
 			continue
 		}
 		return version, nil

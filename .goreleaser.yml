@@ -1,13 +1,11 @@
 before:
   hooks:
     - go mod download
-build:
-  goarch:
-    - amd64
-  env:
-    - CGO_ENABLED=0
+builds:
+  - goarch: [ amd64 ]
+    env: [ CGO_ENABLED=0 ]
 brews:
-- github:
+- tap:
     owner: caarlos0
     name: homebrew-tap
   folder: Formula

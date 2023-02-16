@@ -1,9 +1,6 @@
 package client
 
-import (
-	"github.com/patrickmn/go-cache"
-	"github.com/prometheus/common/log"
-)
+import "github.com/patrickmn/go-cache"
 
 // NewCachedClient returns a new cached client
 func NewCachedClient(client Client, cache *cache.Cache) Client {
@@ -21,10 +18,8 @@ type cachedClient struct {
 func (c cachedClient) Releases(repo string) ([]Release, error) {
 	cached, found := c.cache.Get(repo)
 	if found {
-		log.Debugf("using result from cache for %s", repo)
 		return cached.([]Release), nil
 	}
-	log.Debugf("using result from API for %s", repo)
 	live, err := c.client.Releases(repo)
 	c.cache.Set(repo, live, cache.DefaultExpiration)
 	return live, err
