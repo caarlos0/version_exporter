@@ -11,7 +11,7 @@ import (
 )
 
 func TestConfigReload(t *testing.T) {
-	var config = Config{}
+	config := Config{}
 	var n int32
 	Load("testdata/config.yml", &config, func() {
 		atomic.AddInt32(&n, 1)

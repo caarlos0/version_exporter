@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -16,7 +15,7 @@ type Config struct {
 }
 
 func doLoad(file string, config *Config) error {
-	bts, err := ioutil.ReadFile(file)
+	bts, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}

@@ -9,14 +9,14 @@ import (
 )
 
 func TestCachedClient(t *testing.T) {
-	var c = cache.New(1*time.Minute, 1*time.Minute)
-	var rel = []Release{
+	c := cache.New(1*time.Minute, 1*time.Minute)
+	rel := []Release{
 		{
 			TagName: "v1.1.1",
 		},
 	}
-	var cli = NewCachedClient(cacheTestClient{result: &rel}, c)
-	var oldRel = rel
+	cli := NewCachedClient(cacheTestClient{result: &rel}, c)
+	oldRel := rel
 
 	t.Run("get fresh", func(t *testing.T) {
 		res, err := cli.Releases("foo")

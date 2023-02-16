@@ -2,7 +2,7 @@ package collector
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,12 +15,12 @@ import (
 )
 
 func TestCollectorError(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "v0.1.1",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{}, fmt.Errorf("failed to blah"))
+	client := client.NewFakeClient([]client.Release{}, fmt.Errorf("failed to blah"))
 	testCollector(t, NewVersionCollector(&config, client), func(t *testing.T, status int, body string) {
 		require.Equal(t, 200, status)
 		require.Contains(t, body, "version_up 0")
@@ -28,12 +28,12 @@ func TestCollectorError(t *testing.T) {
 }
 
 func TestRepoUpToDate(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "v0.1.1",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{
+	client := client.NewFakeClient([]client.Release{
 		{
 			TagName: "v0.1.1",
 		},
@@ -46,12 +46,12 @@ func TestRepoUpToDate(t *testing.T) {
 }
 
 func TestRepoOutOfDate(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "v0.1.1",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{
+	client := client.NewFakeClient([]client.Release{
 		{
 			TagName: "v0.1.2",
 		},
@@ -64,12 +64,12 @@ func TestRepoOutOfDate(t *testing.T) {
 }
 
 func TestDraftRelease(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "v0.1.1",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{
+	client := client.NewFakeClient([]client.Release{
 		{
 			TagName: "v0.1.2",
 			Draft:   true,
@@ -86,12 +86,12 @@ func TestDraftRelease(t *testing.T) {
 }
 
 func TestPrerelease(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "v0.1.1",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{
+	client := client.NewFakeClient([]client.Release{
 		{
 			TagName:    "v0.1.2",
 			Prerelease: true,
@@ -108,12 +108,12 @@ func TestPrerelease(t *testing.T) {
 }
 
 func TestTagWithPrelease(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "v0.1.1",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{
+	client := client.NewFakeClient([]client.Release{
 		{
 			TagName: "v0.1.2-beta",
 		},
@@ -129,12 +129,12 @@ func TestTagWithPrelease(t *testing.T) {
 }
 
 func TestInvalidConstraintOnConfig(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "invalid-tag-on-config",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{
+	client := client.NewFakeClient([]client.Release{
 		{
 			TagName: "v0.1.1",
 		},
@@ -146,12 +146,12 @@ func TestInvalidConstraintOnConfig(t *testing.T) {
 }
 
 func TestInvalidSemVerOnRelease(t *testing.T) {
-	var config = config.Config{
+	config := config.Config{
 		Repositories: map[string]string{
 			"foo": "1.2.0",
 		},
 	}
-	var client = client.NewFakeClient([]client.Release{
+	client := client.NewFakeClient([]client.Release{
 		{
 			TagName: "invalid-tag-on-release",
 		},
@@ -163,16 +163,16 @@ func TestInvalidSemVerOnRelease(t *testing.T) {
 }
 
 func testCollector(t *testing.T, collector prometheus.Collector, checker func(t *testing.T, status int, body string)) {
-	var registry = prometheus.NewRegistry()
+	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
 
-	var srv = httptest.NewServer(promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	srv := httptest.NewServer(promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL)
 	require.NoError(t, err)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	checker(t, resp.StatusCode, string(body))
 }
