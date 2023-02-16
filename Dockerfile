@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/base
+FROM cgr.dev/chainguard/static
 EXPOSE 9333
 COPY version_exporter /
 COPY config.yaml /
