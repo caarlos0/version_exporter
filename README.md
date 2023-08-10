@@ -22,16 +22,14 @@ Or with `docker-compose`:
 version: '3'
 services:
   releases:
-    image: caarlos0/gversion_exporter:v1
+    image: caarlos0/version_exporter:v1
     restart: always
     volumes:
     - /path/to/config.yml:/etc/config.yml
     command:
     - '--config.file=/etc/config.yml'
     ports:
-    - 127.0.0.1:9333:9333
-    env_file:
-    - .env
+    - 9333:9333
 ```
 
 You can personalize the `config.yaml` file like following:
