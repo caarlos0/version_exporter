@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+version: 2
 variables:
   description: Exports the expiration time of your domains in the Prometheus format.
 
@@ -15,49 +17,49 @@ includes:
   - from_url:
       url: https://raw.githubusercontent.com/caarlos0/goreleaserfiles/main/sbom.yml
 dockers:
-- image_templates:
-  - 'ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64'
-  - 'caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64'
-  dockerfile: Dockerfile
-  use: buildx
-  build_flag_templates:
-  - "--pull"
-  - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}"
-  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-  - "--label=org.opencontainers.image.version={{.Version}}"
-  - "--label=org.opencontainers.image.source={{ with .Var.repository }}{{ . }}{{ else }}https://github.com/caarlos0/{{ .ProjectName }}{{ end }}"
-  - "--platform=linux/amd64"
-  extra_files: [ config.yaml ]
-- image_templates:
-  - 'ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64'
-  - 'caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64'
-  dockerfile: Dockerfile
-  use: buildx
-  build_flag_templates:
-  - "--pull"
-  - "--label=org.opencontainers.image.created={{.Date}}"
-  - "--label=org.opencontainers.image.name={{.ProjectName}}"
-  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-  - "--label=org.opencontainers.image.version={{.Version}}"
-  - "--label=org.opencontainers.image.source={{ with .Var.repository }}{{ . }}{{ else }}https://github.com/caarlos0/{{ .ProjectName }}{{ end }}"
-  - "--platform=linux/arm64"
-  goarch: arm64
-  extra_files: [ config.yaml ]
+  - image_templates:
+      - "ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{ with .Var.repository }}{{ . }}{{ else }}https://github.com/caarlos0/{{ .ProjectName }}{{ end }}"
+      - "--platform=linux/amd64"
+    extra_files: [config.yaml]
+  - image_templates:
+      - "ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64"
+      - "caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{ with .Var.repository }}{{ . }}{{ else }}https://github.com/caarlos0/{{ .ProjectName }}{{ end }}"
+      - "--platform=linux/arm64"
+    goarch: arm64
+    extra_files: [config.yaml]
 docker_manifests:
-- name_template: 'ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}'
-  image_templates:
-  - 'ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64'
-  - 'ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64'
-- name_template: 'ghcr.io/caarlos0/{{ .ProjectName }}:latest'
-  image_templates:
-  - 'ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64'
-  - 'ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64'
-- name_template: 'caarlos0/{{ .ProjectName }}:{{ .Tag }}'
-  image_templates:
-  - 'caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64'
-  - 'caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64'
-- name_template: 'caarlos0/{{ .ProjectName }}:latest'
-  image_templates:
-  - 'caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64'
-  - 'caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64'
+  - name_template: "ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/caarlos0/{{ .ProjectName }}:latest"
+    image_templates:
+      - "ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64"
+  - name_template: "caarlos0/{{ .ProjectName }}:{{ .Tag }}"
+    image_templates:
+      - "caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64"
+  - name_template: "caarlos0/{{ .ProjectName }}:latest"
+    image_templates:
+      - "caarlos0/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "caarlos0/{{ .ProjectName }}:{{ .Tag }}-arm64"
