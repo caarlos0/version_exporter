@@ -35,7 +35,7 @@ jobs:
           password: ${{ secrets.GH_PAT }}
           registry: ghcr.io
       - uses: sigstore/cosign-installer@v4.0.0
-      - uses: anchore/sbom-action/download-syft@v0.21.0
+      - uses: anchore/sbom-action/download-syft@v0.21.1
       - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser-pro
